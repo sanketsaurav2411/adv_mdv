@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Markdown Viewer — popup (web)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Use CDN copies of vendor libs (original popup used /vendor/...) -->
+  <link rel="stylesheet" href="https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.css" />
+  <!-- Load popup CSS (relative path to popup folder) -->
+  <link rel="stylesheet" href="popup/index.css" />
+
+  <style>
+    /* keep the page neutral, popup CSS will style the injected app */
+    html,body{height:100%;margin:0;padding:0;background:#fff;}
+  </style>
+
+  <!-- Lightweight chrome/browser shim BEFORE popup scripts run -->
+  <script>
+    // minimal chrome/browser polyfills used by the extension popup
+    window.chrome = window.chrome || {};
+    window.browser = window.browser || {};
+    chrome.runtime = chrome.runtime || {};
+    chrome.runtime.getURL = chrome.runtime.getURL || function(p){ return p; };
+    chrome.runtime.sendMessage = chrome.runtime.sendMessage || function(){};
+    chrome.runtime.connect = chrome.runtime.connect || function(){ return { onMessage:{ addListener: ()=>{} }, postMessage: ()=>{} }; };
+    chrome.storage = chrome.storage || { local:{ get: (k,cb)=>{ cb && cb({}); }, set:(o,cb)=>{ cb && cb(); } } };
+  </script>
+
+  <!-- Material components JS + Mithril (from CDN) -->
+  <script src="https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mithril@2.0.4/mithril.min.js" defer></script>
+</head>
+<body class="is-popup">
+  <!-- The popup code expects document.querySelector('body') to exist and class "is-popup" -->
+  <!-- We'll load popup/index.js after vendor libs have loaded. -->
+  <div id="root" aria-hidden="true"></div>
+
+  <!-- Load the popup script (relative path). Do not use leading slash. -->
+  <script src="popup/index.js" type="text/javascript" charset="utf-8"></script>
+
+  <!-- Optional small runtime guard: show console hint if something fails -->
+  <script>
+    // Quick runtime check to surface errors for debugging
+    window.addEventListener('error', function(e) {
+      console.error('Uncaught error (popup_web):', e.error || e.message || e);
+      // show a little visible hint:
+      const el = document.getElementById('adv_mdv_error');
+      if (!el) {
+        const d = document.createElement('div');
+        d.id = 'adv_mdv_error';
+        d.style.cssText = 'position:fixed;left:10px;bottom:10px;padding:8px 12px;background:#ffb4b4;color:#000;border-radius:6px;font-family:monospace;z-index:9999';
+        d.textContent = 'Popup runtime error — open console.';
+        document.body.appendChild(d);
+      }
+    });
+
+    // Log a small ready message
+    console.info('popup_web: loaded. If the UI is blank, open DevTools console to inspect errors/network 404s.');
+  </script>
+</body>
+</html>

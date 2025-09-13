@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <title>Markdown Viewer (Web Version) — injected popup</title>
+    <meta http-equiv="refresh" content="0;url=popup_web.html">
+
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; background:#0f172a; color:#e6eef8; }
@@ -85,17 +87,17 @@
 
     // Inject shim script at top so popup scripts see chrome.* etc.
     const shim = `
-<script>
-  // lightweight chrome/browser shims (injected inside popup)
-  window.chrome = window.chrome || {};
-  window.browser = window.browser || {};
-  chrome.runtime = chrome.runtime || {};
-  chrome.runtime.getURL = chrome.runtime.getURL || function(p){ return p; };
-  chrome.runtime.sendMessage = chrome.runtime.sendMessage || function(){};
-  chrome.runtime.connect = chrome.runtime.connect || function(){ return { onMessage:{ addListener: ()=>{} }, postMessage: ()=>{} }; };
-  chrome.storage = chrome.storage || { local:{ get: (k,cb)=>{ cb && cb({}); }, set:(o,cb)=>{ cb && cb(); } } };
-</script>
-`;
+        <script>
+        // lightweight chrome/browser shims (injected inside popup)
+        window.chrome = window.chrome || {};
+        window.browser = window.browser || {};
+        chrome.runtime = chrome.runtime || {};
+        chrome.runtime.getURL = chrome.runtime.getURL || function(p){ return p; };
+        chrome.runtime.sendMessage = chrome.runtime.sendMessage || function(){};
+        chrome.runtime.connect = chrome.runtime.connect || function(){ return { onMessage:{ addListener: ()=>{} }, postMessage: ()=>{} }; };
+        chrome.storage = chrome.storage || { local:{ get: (k,cb)=>{ cb && cb({}); }, set:(o,cb)=>{ cb && cb(); } } };
+        </script>
+        `;
 
     // Add <base> tag so relative links inside popup resolve to the popup folder on GitHub Pages.
     // Use full absolute base (origin + path) to be safe.
