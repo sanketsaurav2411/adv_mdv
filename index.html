@@ -1,208 +1,49 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Markdown Viewer — Extension as Webpage</title>
+  <meta charset="utf-8">
+  <title>Markdown Viewer (Web Version)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    html,body { height:100%; margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#0f1724; color:#e6eef8; }
-    .wrap { display:flex; height:100vh; gap:12px; padding:12px; box-sizing:border-box; }
-    .left { width:420px; max-width:42%; min-width:320px; background:#071028; border-radius:10px; padding:10px; box-shadow:0 6px 18px rgba(2,6,23,0.6); }
-    .right { flex:1; background:#081427; border-radius:10px; padding:10px; box-shadow:0 6px 18px rgba(2,6,23,0.6); display:flex; flex-direction:column; }
-    h1 { margin:0 0 8px 0; font-size:18px; font-weight:600; color:#dbeafe; }
-    p { margin:0 0 8px 0; color:#9fb6d9; font-size:13px; }
-    iframe#popupFrame { width:100%; height:640px; border:0; border-radius:8px; background: #fff; }
-    .log { font-family: monospace; font-size:12px; color:#9fb6d9; }
-    .hint { margin-top:8px; font-size:13px; color:#7aa0d6; }
-    .fallback-note { margin-top:10px; color:#9fb6d9; font-size:13px; }
-    .small { font-size:12px; color:#7ea1ce; }
-    .btn { display:inline-block; margin-top:8px; padding:6px 10px; background:#0ea5e9; color:#02243a; border-radius:6px; text-decoration:none; font-weight:600; }
-    .error { color:#ffb4b4; font-weight:600; }
-    .success { color:#b9f6c6; font-weight:600; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #1e293b;
+      padding: 10px 16px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #f1f5f9;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    iframe {
+      flex: 1;
+      border: none;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+    }
   </style>
+  <script>
+    // Minimal shim to prevent crashes when extension scripts expect chrome.*
+    window.chrome = window.chrome || {};
+    chrome.runtime = chrome.runtime || {};
+    chrome.runtime.getURL = (p)=>p;
+    chrome.runtime.sendMessage = ()=>{};
+    chrome.runtime.connect = ()=>({onMessage:{addListener:()=>{}},postMessage:()=>{}});
+    chrome.storage = {local:{get:(k,cb)=>cb&&cb({}),set:(o,cb)=>cb&&cb()}};
+  </script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="left">
-      <h1>Markdown Viewer — extension UI</h1>
-      <p>Attempting to display the extension UI in an iframe. If the popup requires extension-only APIs it may not be fully interactive — the script loader below will try to inject renderer scripts as a fallback.</p>
-
-      <div id="status" class="log">status: <span id="statusText">starting…</span></div>
-      <div class="hint">Try: <a class="btn" href="https://sanketsaurav2411.github.io/adv_mdv/" target="_blank">Open site root</a></div>
-
-      <div class="fallback-note">
-        <div><strong>What this page does:</strong></div>
-        <ul>
-          <li class="small">Load <code>popup/popup.html</code> in an iframe (best visual match).</li>
-          <li class="small">If popup needs extension APIs, we also try to load renderer scripts found in common locations (build/, content/, popup/).</li>
-          <li class="small">Shims common extension objects like <code>chrome.runtime.getURL</code> to reduce crashes.</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="right">
-      <h1>Preview / Popup</h1>
-      <p class="small">If popup is available in the repo, it will load below. Otherwise the page will try to inject extension renderer scripts into this page so the markdown viewer can run directly.</p>
-
-      <!-- Primary attempt: show extension's popup UI -->
-      <iframe id="popupFrame" src="popup/popup.html" title="extension popup"></iframe>
-
-      <div style="margin-top:10px;">
-        <div id="injectLog" class="log">script loader: <span id="injectText">waiting</span></div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-  (function(){
-    const statusText = document.getElementById('statusText');
-    const injectText = document.getElementById('injectText');
-
-    function updateStatus(msg, cls) {
-      statusText.textContent = msg;
-      if (cls) statusText.className = cls;
-    }
-    function updateInject(msg, cls) {
-      injectText.textContent = msg;
-      if (cls) injectText.className = cls;
-    }
-
-    updateStatus('shimming extension APIs…');
-
-    // --- 1) Lightweight shims for chrome/browser APIs used by extensions ---
-    // These shims make extension code less likely to throw on normal web pages.
-    window.chrome = window.chrome || {};
-    window.browser = window.browser || {};
-    // runtime
-    chrome.runtime = chrome.runtime || {};
-    chrome.runtime.getURL = chrome.runtime.getURL || function(path){ return path; };
-    chrome.runtime.connect = chrome.runtime.connect || function(){ return { onMessage: { addListener: ()=>{} }, postMessage: ()=>{} }; };
-    chrome.runtime.sendMessage = chrome.runtime.sendMessage || function(){ /* noop */ };
-    chrome.storage = chrome.storage || { local: { get: (k,cb)=>{ cb && cb({}); }, set: (obj,cb)=>{ cb && cb(); } } };
-    // extension
-    chrome.extension = chrome.extension || {};
-
-    // some extension code uses browser.* (firefox polyfill)
-    browser.runtime = browser.runtime || chrome.runtime;
-    browser.storage = browser.storage || chrome.storage;
-
-    updateStatus('shims loaded. attempting to load popup UI (popup/popup.html)');
-
-    // --- 2) Try to detect if popup/popup.html loaded successfully in iframe ---
-    const popupFrame = document.getElementById('popupFrame');
-
-    // If popup fails to load (404) the iframe contentWindow will still exist but cross-origin or 404 means we may not have access.
-    // We'll still try to detect if the iframe loaded some content by waiting a moment and checking its document title (if same-origin).
-    function checkIframeLoaded() {
-      try {
-        const doc = popupFrame.contentDocument || popupFrame.contentWindow.document;
-        // If title exists and not empty, we consider popup displayed
-        if (doc && (doc.title && doc.title.trim().length > 0 || doc.body && doc.body.children.length > 0)) {
-          updateStatus('popup loaded in iframe ✅');
-          updateInject('popup iframe ok — no injection needed', 'success');
-          return true;
-        }
-      } catch(e) {
-        // cross-origin or other access error — treat iframe as loaded visually (it may still show content)
-        // We can't inspect contents due to same-origin rules; assume it's visible if no network error.
-        console.warn('iframe check failed (likely cross-origin):', e);
-        updateStatus('popup iframe loaded (cannot inspect due to same-origin) ✅');
-        updateInject('iframe visible — if popup is blank or non-functional we will inject renderer scripts', 'success');
-        // we'll still attempt to inject as fallback below
-        return true;
-      }
-      return false;
-    }
-
-    // Give iframe a short time to load
-    setTimeout(() => {
-      const ok = checkIframeLoaded();
-      if (!ok) {
-        updateStatus('popup not detected in iframe — falling back to script injection');
-        attemptScriptInjection();
-      } else {
-        // Even if iframe loaded, injection may be helpful if popup depends on extension APIs.
-        // We'll still attempt injection after a short delay to improve compatibility.
-        setTimeout(() => attemptScriptInjection(), 600);
-      }
-    }, 800);
-
-    // --- 3) Script injector fallback: try common script paths and inject the first ones available ---
-    const candidateScripts = [
-      // common files that might exist in simov/markdown-viewer or similar repos
-      'build/content.js',
-      'build/markdown-viewer.js',
-      'build/main.js',
-      'dist/content.js',
-      'dist/markdown-viewer.js',
-      'content/markdown-viewer.js',
-      'content/content-script.js',
-      'content/content.js',
-      'popup/popup.js',
-      'popup/popup.bundle.js',
-      'popup/index.js',
-      'background/background.js',
-      'main.js',
-      'index.js'
-    ];
-
-    // helper to check if file exists on server (HEAD)
-    async function exists(path) {
-      try {
-        const res = await fetch(path, { method: 'HEAD' });
-        return res.ok;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    // attempt to inject scripts sequentially (but allow multiple to be injected)
-    async function attemptScriptInjection() {
-      updateInject('scanning for renderer scripts…');
-      const found = [];
-      for (const p of candidateScripts) {
-        try {
-          // try HEAD first to avoid downloading big bundles repeatedly
-          const ok = await exists(p);
-          if (ok) {
-            found.push(p);
-            // inject script tag
-            const s = document.createElement('script');
-            s.src = p;
-            s.defer = false; // execute ASAP
-            s.onload = () => console.info('injected script loaded:', p);
-            s.onerror = (ev) => console.warn('script injection error for', p, ev);
-            document.body.appendChild(s);
-            updateInject(`injected: ${p}`);
-          }
-        } catch (e) {
-          console.warn('error checking', p, e);
-        }
-      }
-
-      if (found.length === 0) {
-        updateInject('no known renderer scripts found — you may need to add an index.html that uses the extension code', 'error');
-        updateStatus('no renderer scripts found ❌');
-        // Offer a small hint in console
-        console.info('Fallback loader: tried these candidate paths:', candidateScripts);
-        return;
-      }
-
-      updateStatus(`injected ${found.length} script(s) — check console for logs`);
-      updateInject(`injected: ${found.join(', ')}`, 'success');
-
-      // After injection, some extension modules expect to be run in a page with certain DOM elements.
-      // If the repo exposes a UI html (like popup/popup.html) that depends on scripts, you can also open that file directly.
-      console.info('Fallback injection completed. If the UI is still blank, open popup/popup.html directly to debug.');
-    }
-
-    // Expose small helper in console for debugging
-    window.__adv_mdv_helpers = {
-      attemptScriptInjection,
-      candidateScripts
-    };
-
-  })();
-  </script>
+  <header>Markdown Viewer (Web Version)</header>
+  <!-- Load the popup UI just like in the extension -->
+  <iframe src="popup/index.html" title="Markdown Viewer"></iframe>
 </body>
 </html>
