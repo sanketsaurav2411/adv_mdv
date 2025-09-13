@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Markdown Viewer — Web</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Reuse extension CSS where helpful -->
+  <link rel="stylesheet" href="content/index.css" />
+  <link rel="stylesheet" href="content/themes.css" />
+
+  <!-- Prism for syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css" />
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#071028;
+      --text:#dbeafe;
+    }
+    body{margin:0;font-family:system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column;}
+    header{background:#0f1724;padding:10px 14px;font-weight:600;}
+    .wrap{display:flex;flex:1;gap:12px;padding:12px;box-sizing:border-box}
+    .left{width:420px;min-width:260px;background:var(--panel);padding:12px;border-radius:8px;box-shadow:0 6px 18px rgba(2,6,23,.6)}
+    .right{flex:1;background:#fff;border-radius:8px;padding:16px;overflow:auto;color:#111}
+    textarea#mdinput{width:100%;height:220px;resize:vertical;padding:8px;font-family:monospace}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{background:#0ea5e9;color:#02243a;padding:8px 10px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:700;cursor:pointer;border:none}
+    #render{max-width:900px;margin:0 auto}
+    pre code{white-space:pre;display:block;padding:8px;border-radius:6px;background:#f5f5f5;overflow:auto}
+    .muted{color:#9fb6d9;font-size:13px}
+    .dropzone{border:2px dashed rgba(255,255,255,0.06);padding:14px;border-radius:6px;margin-top:8px;text-align:center;color:#9fb6d9}
+  </style>
+
+  <!-- Markdown-it -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
+  <!-- Markdown-it plugins (optional) -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@3.0.3/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-deflist@2.0.3/index.min.js"></script>
+  <!-- Prism -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</head>
+<body>
+  <header>Markdown Viewer — Web (upload .md or paste)</header>
+
+  <div class="wrap">
+    <div class="left">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700">Open / Upload</div>
+          <div class="muted">Choose a .md file or paste markdown below</div>
+        </div>
+        <div style="text-align:right">
+          <button id="openFile" class="btn">Choose file</button>
+        </div>
+      </div>
+
+      <input id="fileInput" type="file" accept=".md,.markdown,.txt" style="display:none" />
+
+      <div class="dropzone" id="dropzone">Drag & drop a .md file here</div>
+
+      <div style="margin-top:10px">
+        <label class="muted">Or paste markdown (live preview)</label>
+        <textarea id="mdinput" placeholder="# Paste markdown here"></textarea>
+      </div>
+
+      <div style="margin-top:10px" class="controls">
+        <button id="clearBtn" class="btn">Clear</button>
+        <button id="downloadHtml" class="btn">Download HTML</button>
+        <button id="openUrlBtn" class="btn">Open from URL</button>
+        <input id="urlInput" type="text" placeholder="https://raw.githubusercontent.com/..." style="flex:1;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text)" />
+      </div>
+
+      <div style="margin-top:8px" class="muted">Tip: use raw GitHub URLs (raw.githubusercontent.com) or upload from your device.</div>
+    </div>
+
+    <div class="right">
+      <div id="render">
+        <!-- rendered markdown goes here -->
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Setup markdown-it
+  const md = window.markdownit({ html: true, linkify: true, typographer: true })
+    .use(window.markdownitFootnote || function() {})
+    .use(window.markdownitDeflist || function() {});
+
+  const input = document.getElementById('mdinput');
+  const renderEl = document.getElementById('render');
+  const fileInput = document.getElementById('fileInput');
+  const openFile = document.getElementById('openFile');
+  const dropzone = document.getElementById('dropzone');
+  const clearBtn = document.getElementById('clearBtn');
+  const downloadHtml = document.getElementById('downloadHtml');
+  const openUrlBtn = document.getElementById('openUrlBtn');
+  const urlInput = document.getElementById('urlInput');
+
+  function renderMarkdown(text){
+    // render
+    renderEl.innerHTML = md.render(text || '');
+    // highlight
+    Prism.highlightAllUnder(renderEl);
+    // images & links default behavior
+    const imgs = renderEl.querySelectorAll('img');
+    imgs.forEach(i => { i.style.maxWidth = '100%'; });
+  }
+
+  // Live preview
+  input.addEventListener('input', ()=> renderMarkdown(input.value));
+  input.value = '# Welcome to Markdown Viewer\\n\\nDrop a .md file or paste markdown here.';
+  renderMarkdown(input.value);
+
+  // File open
+  openFile.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { input.value = reader.result; renderMarkdown(reader.result); };
+    reader.readAsText(f);
+  });
+
+  // Drag & drop
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = '#0ea5e9'; });
+  dropzone.addEventListener('dragleave', e => { dropzone.style.borderColor = ''; });
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault(); dropzone.style.borderColor = '';
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { input.value = reader.result; renderMarkdown(reader.result); };
+    reader.readAsText(f);
+  });
+
+  // Clear
+  clearBtn.addEventListener('click', ()=> { input.value=''; renderMarkdown(''); });
+
+  // Download rendered HTML
+  downloadHtml.addEventListener('click', ()=>{
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Export</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css"></head>
+<body>${renderEl.innerHTML}</body></html>`;
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'rendered.html'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Open raw URL
+  openUrlBtn.addEventListener('click', async ()=>{
+    const u = urlInput.value.trim();
+    if (!u) return alert('Enter a raw URL (raw.githubusercontent.com...)');
+    try {
+      const res = await fetch(u);
+      if (!res.ok) throw new Error('status ' + res.status);
+      const txt = await res.text();
+      input.value = txt;
+      renderMarkdown(txt);
+    } catch (err) {
+      alert('Failed to fetch: ' + err.message);
+    }
+  });
+
+  // Optional: accept query param ?url=...
+  const params = new URLSearchParams(location.search);
+  if (params.get('url')) {
+    urlInput.value = params.get('url');
+    openUrlBtn.click();
+  }
+</script>
+</body>
+</html>
