@@ -1,18 +1,105 @@
-# from your local repo folder
-cat > index.html <<'HTML'
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>adv_mdv test</title>
-  </head>
-  <body>
-    <h1>GitHub Pages is working 🎉</h1>
-    <p>If you see this, your site is live.</p>
-  </body>
-</html>
-HTML
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Advanced Markdown Viewer</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
+    }
+    #input-area {
+      width: 40%;
+      padding: 1rem;
+      box-sizing: border-box;
+      border-right: 2px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+    #markdown-input {
+      flex: 1;
+      width: 100%;
+      resize: none;
+      padding: 0.5rem;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    #preview {
+      width: 60%;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    #file-input {
+      margin-top: 0.5rem;
+    }
+    pre code {
+      background: #f5f5f5;
+      padding: 4px;
+      display: block;
+      overflow-x: auto;
+    }
+  </style>
+  <!-- Markdown-it (core parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
+  <!-- Prism.js for syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+</head>
+<body>
+  <div id="input-area">
+    <h3>Markdown Input</h3>
+    <textarea id="markdown-input" placeholder="Type or paste Markdown here..."># Welcome 🎉
 
-git add index.html
-git commit -m "Add index.html for GitHub Pages"
-git push origin main
+This is your **Markdown Viewer** running on GitHub Pages.
+
+- Paste or type markdown
+- Or load a `.md` file using the button below
+- Live preview on the right ➡️
+    </textarea>
+    <input type="file" id="file-input" accept=".md,.markdown,.txt">
+  </div>
+  <div id="preview">
+    <h3>Preview</h3>
+    <div id="rendered"></div>
+  </div>
+
+  <script>
+    const md = window.markdownit({
+      html: true,
+      linkify: true,
+      typographer: true
+    });
+
+    const input = document.getElementById('markdown-input');
+    const rendered = document.getElementById('rendered');
+    const fileInput = document.getElementById('file-input');
+
+    function updatePreview() {
+      rendered.innerHTML = md.render(input.value);
+      Prism.highlightAll(); // re-highlight code blocks
+    }
+
+    input.addEventListener('input', updatePreview);
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          input.value = ev.target.result;
+          updatePreview();
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // initial render
+    updatePreview();
+  </script>
+</body>
+</html>
